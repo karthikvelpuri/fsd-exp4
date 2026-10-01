@@ -1,10 +1,16 @@
 const express = require("express");
 const mongoose = require("mongoose");
+const cors = require("cors");
 
 const app = express();
+const PORT = 3000;
 
-// Middleware to read JSON data
+// Middleware
 app.use(express.json());
+app.use(cors());
+
+// Serve frontend files
+app.use(express.static("public"));
 
 // MongoDB Connection
 mongoose
@@ -12,8 +18,8 @@ mongoose
     .then(() => {
         console.log("MongoDB connected successfully");
     })
-    .catch((error) => {
-        console.log("MongoDB connection error:", error);
+    .catch((err) => {
+        console.log("MongoDB connection error:", err);
     });
 
 // Item Schema
@@ -23,100 +29,101 @@ const itemSchema = new mongoose.Schema({
         required: true
     },
     description: {
-        type: String
+        type: String,
+        required: true
     },
     price: {
-        type: Number
+        type: Number,
+        required: true
     },
-    inStock: {
-        type: Boolean
+    stockStatus: {
+        type: String,
+        required: true
     }
 });
 
 // Item Model
 const Item = mongoose.model("Item", itemSchema);
 
-// Home Route
-app.get("/", (req, res) => {
-    res.send("MongoDB CRUD Application is Running");
+
+// ===============================
+// GET - Display all items
+// ===============================
+app.get("/api/items", async (req, res) => {
+    try {
+        const items = await Item.find();
+        res.json(items);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
-// CREATE - Add a new item
-app.post("/items", async (req, res) => {
+
+// ===============================
+// POST - Add new item
+// ===============================
+app.post("/api/items", async (req, res) => {
     try {
         const item = new Item(req.body);
         const savedItem = await item.save();
 
         res.status(201).json(savedItem);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
     }
 });
 
-// READ - Get all items
-app.get("/items", async (req, res) => {
-    try {
-        const items = await Item.find();
 
-        res.json(items);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// READ - Get one item by ID
-app.get("/items/:id", async (req, res) => {
-    try {
-        const item = await Item.findById(req.params.id);
-
-        if (!item) {
-            return res.status(404).json({ message: "Item not found" });
-        }
-
-        res.json(item);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-});
-
-// UPDATE - Update an item
-app.put("/items/:id", async (req, res) => {
+// ===============================
+// PUT - Update item
+// ===============================
+app.put("/api/items/:id", async (req, res) => {
     try {
         const updatedItem = await Item.findByIdAndUpdate(
             req.params.id,
             req.body,
-            { new: true, runValidators: true }
+            {
+                new: true,
+                runValidators: true
+            }
         );
 
         if (!updatedItem) {
-            return res.status(404).json({ message: "Item not found" });
+            return res.status(404).json({
+                error: "Item not found"
+            });
         }
 
         res.json(updatedItem);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
+    } catch (err) {
+        res.status(400).json({ error: err.message });
     }
 });
 
-// DELETE - Delete an item
-app.delete("/items/:id", async (req, res) => {
+
+// ===============================
+// DELETE - Delete item
+// ===============================
+app.delete("/api/items/:id", async (req, res) => {
     try {
         const deletedItem = await Item.findByIdAndDelete(req.params.id);
 
         if (!deletedItem) {
-            return res.status(404).json({ message: "Item not found" });
+            return res.status(404).json({
+                error: "Item not found"
+            });
         }
 
         res.json({
-            message: "Item deleted successfully",
-            item: deletedItem
+            message: "Item deleted successfully"
         });
-    } catch (error) {
-        res.status(400).json({ error: error.message });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
-// Start the server
-app.listen(3000, () => {
-    console.log("Server running at http://localhost:3000");
+
+// Start server
+app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}`);
 });
